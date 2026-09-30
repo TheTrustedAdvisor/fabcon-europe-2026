@@ -14,6 +14,17 @@ Matthias Falland · FabCon Europe 2026 · Community Hub · linkedin.com/in/matth
 | 4 | How does it reach Prod? | Git, then fabric-cicd to Prod |
 | 5 | Who says yes to access? | Owner per domain, roles in OneLake |
 
+Each question answers one sentence people say in month six, when the structure was never decided:
+
+```mermaid
+flowchart LR
+    M1["Where is the current version?"] --> A1["1 Workspace per<br/>domain and stage"]
+    M2["Which revenue number is right?"] --> A2["2 Shortcut to Gold,<br/>never a copy"]
+    M3["Why is it slow on Monday?"] --> A3["3 Capacity per workload"]
+    M4["Who changed Prod?"] --> A4["4 Git, then fabric-cicd<br/>to Prod"]
+    M5["Who can see this report?"] --> A5["5 Owner per domain,<br/>roles in OneLake"]
+```
+
 ## 1 Where does it live? Workspace per domain and stage
 
 Month six: "Where is the current version?"
