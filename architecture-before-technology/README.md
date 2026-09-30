@@ -8,9 +8,41 @@ FabCon Europe 2026, Barcelona · Community Hub · Thursday 1 October 2026 · Mat
 
 Most Fabric platforms that struggle did not pick the wrong engine. They skipped a few structural decisions on day 1. The talk tells the story of a typical platform: five reasonable decisions that become five familiar sentences in month six, from "Which revenue number is right?" to "Why is it slow on Monday?". For each one there is an architecture answer and one Fabric reason why it works. Then the technology question is easy: why I build Bronze, Silver and Gold as lakehouses, and when a Warehouse still wins.
 
+## The story arc
+
+The talk follows one platform from its first day to its sixth month, then walks back to the structure. The five month-six sentences each get an architecture answer; the technology comes last, and every decision gets a record.
+
+```mermaid
+%%{init: {"timeline": {"disableMulticolor": true}}}%%
+timeline
+    title From day 1 to month 6, and back to the structure
+    Day 1 : Five reasonable decisions : The structural questions are skipped
+    Month 6 : Where is the current version? : Which revenue number is right? : Why is it slow on Monday? : Who changed Prod? : Who can see this report?
+    The five answers : Structure decided before the first item
+    Then the technology : Lakehouse, Lakehouse, Lakehouse : Warehouse only where Gold needs T-SQL writes
+    Every decision : One ADR
+```
+
 ## The five answers
 
 The example organisation: Finance owns the data (a core data domain), Sales builds reports on it (a consumer domain).
+
+Five questions to answer before the first item is created, each with its short answer. The table below adds the month-six sentence, the details and the ADR for each.
+
+```mermaid
+mindmap
+  root((Decide the structure first))
+    1 Where does it live?
+      Workspace per domain and stage
+    2 How do others read it?
+      Shortcut to Gold, never a copy
+    3 What competes for compute?
+      Capacity per workload
+    4 How does it reach Prod?
+      Git, then fabric-cicd to Prod
+    5 Who says yes to access?
+      Owner per domain, roles in OneLake
+```
 
 | # | Month-six sentence | Architecture answer | Details |
 |---|---|---|---|

@@ -20,6 +20,36 @@ Starting with one workspace for everything is fast. After a few months nobody fi
 2. **Consumer domains** (the domains that build reports on top, here Sales, and Finance's own reporting) get **one workspace per stage**: `Sales-Dev-Reports`, `Sales-Test-Reports`, `Sales-Prod-Reports`. Inside, content is organised with workspace folders, one per team that builds reports there. Consumers read Gold by shortcut, never by copy.
 3. Every workspace, Dev and Test included, is assigned to its Fabric domain. Names follow [naming.md](../naming.md).
 
+The cut for one core data domain and one consumer domain. Each stage of Finance has its own Bronze, Silver and Gold workspace; each Sales stage has one reports workspace that reads the Gold workspace of the same stage by shortcut.
+
+```mermaid
+flowchart LR
+    subgraph FIN["Finance: core data domain, one workspace per layer and stage"]
+        direction TB
+        subgraph FDEV["Dev"]
+            direction LR
+            DB["Finance-Dev-Bronze"] --> DS["Finance-Dev-Silver"] --> DG["Finance-Dev-Gold"]
+        end
+        subgraph FTEST["Test"]
+            direction LR
+            TB["Finance-Test-Bronze"] --> TS["Finance-Test-Silver"] --> TG["Finance-Test-Gold"]
+        end
+        subgraph FPROD["Prod"]
+            direction LR
+            PB["Finance-Prod-Bronze"] --> PS["Finance-Prod-Silver"] --> PG["Finance-Prod-Gold"]
+        end
+    end
+    subgraph SAL["Sales: consumer domain, one workspace per stage"]
+        direction TB
+        SD["Sales-Dev-Reports<br/>folders per team"]
+        ST["Sales-Test-Reports<br/>folders per team"]
+        SP["Sales-Prod-Reports<br/>folders per team"]
+    end
+    DG -. "shortcut" .-> SD
+    TG -. "shortcut" .-> ST
+    PG -. "shortcut" .-> SP
+```
+
 ## Options considered
 
 The first options follow Microsoft's deployment patterns ([Choose a Microsoft Fabric deployment pattern](https://learn.microsoft.com/azure/architecture/data-guide/technology-choices/fabric-deployment-patterns?wt.mc_id=AZ-MVP-5003447)); the last ones add the layer question.

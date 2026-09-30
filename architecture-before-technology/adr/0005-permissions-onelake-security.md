@@ -21,6 +21,30 @@ The month-six sentence is "Who can see this report?". Permissions were set in th
 5. **The domain owner approves group membership.** This is our process, run in the identity tooling; Fabric has no approval feature for it. Each domain's owner is also its Fabric domain admin.
 6. **Report models on Gold data use Direct Lake on OneLake,** not Direct Lake on SQL (see consequences).
 
+Who gets what for the Finance data. Groups carry the workspace roles; readers get Viewer plus a OneLake security role on `finance_gold`, and the role is enforced by every engine that reads the data.
+
+```mermaid
+flowchart LR
+    OWN["Domain owner<br/>approves membership"]
+    ADM["Admins group<br/>two people, break-glass"]
+    BLD["Builders group"]
+    RD["Readers group"]
+    SPN["Release service principal"]
+    DEV["Finance Dev workspaces"]
+    GOLD["Finance-Prod-Gold"]
+    ROLE["OneLake security role on finance_gold<br/>tables, rows, columns"]
+    SPK["Spark"]
+    SQL["SQL analytics endpoint<br/>user's identity mode"]
+    DL["Direct Lake on OneLake"]
+    OWN --> ADM & BLD & RD
+    BLD -- "Contributor, Dev only" --> DEV
+    ADM -- "Admin, break-glass" --> GOLD
+    SPN -- "deploys" --> GOLD
+    RD -- "Viewer" --> GOLD
+    RD -- "member" --> ROLE
+    ROLE -- "enforced by" --> SPK & SQL & DL
+```
+
 ## Options considered
 
 1. **Permissions per engine** (semantic model row-level security, SQL GRANTs, report sharing). *Rejected because* it is the three-places problem from the context.
@@ -37,6 +61,21 @@ The month-six sentence is "Who can see this report?". Permissions were set in th
 - **Shortcuts pass the reader's identity.** For OneLake-to-OneLake shortcuts in the same tenant, passthrough is the default: "the shortcut accesses data in the target location by passing the user's identity to the target system" ([OneLake shortcut security](https://learn.microsoft.com/fabric/onelake/onelake-shortcut-security?wt.mc_id=AZ-MVP-5003447)). The Gold role therefore applies to Sales readers too. Two different checks apply: listing the shortcut in the Sales lakehouse needs "Fabric Read *plus* OneLake security Read" on the shortcut path; reading the data behind it is checked at the target against Finance's roles. Microsoft's Direct Lake guidance says the same from the model side: "If a source item has shortcuts to another Fabric item, the user also needs *read* access to each shortcut's target Fabric item" ([Integrate Direct Lake security](https://learn.microsoft.com/fabric/fundamentals/direct-lake-security-integration?wt.mc_id=AZ-MVP-5003447)).
 - **Groups.** Microsoft: "A best practice is to use groups to assign workspace roles" ([Workspaces at the workspace level](https://learn.microsoft.com/power-bi/guidance/powerbi-implementation-planning-workspaces-workspace-level-planning?wt.mc_id=AZ-MVP-5003447)), and security groups "offer the highest coverage" across Fabric settings ([Tenant-level security planning](https://learn.microsoft.com/power-bi/guidance/powerbi-implementation-planning-security-tenant-level-planning?wt.mc_id=AZ-MVP-5003447)).
 - **Domain admins from the business.** Microsoft suggests domain admins are ideally the business owners of the domain; the domain role manages domain settings and doesn't grant data access ([Fabric domains](https://learn.microsoft.com/fabric/governance/domains?wt.mc_id=AZ-MVP-5003447)).
+
+A Sales reader passes two checks. The first is on the shortcut in the Sales lakehouse; the second happens at Gold with the reader's own identity, so Finance's rules decide which data comes back.
+
+```mermaid
+sequenceDiagram
+    actor U as Sales reader
+    participant S as sales_reporting<br/>in Sales-Prod-Reports
+    participant G as finance_gold<br/>in Finance-Prod-Gold
+    U->>S: open the shortcut to a Gold table
+    Note over S: Check 1, at the shortcut path:<br/>Fabric Read plus OneLake Read<br/>on the shortcut path
+    S->>G: passes the reader's identity
+    Note over G: Check 2, reading the data:<br/>Viewer on Finance-Prod-Gold<br/>plus a OneLake role<br/>on finance_gold
+    G-->>S: only the tables, rows and columns<br/>Finance's role allows
+    S-->>U: result
+```
 
 ## Consequences and trade-offs
 

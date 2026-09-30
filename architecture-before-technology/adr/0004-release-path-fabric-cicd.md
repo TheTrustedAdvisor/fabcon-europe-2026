@@ -19,6 +19,45 @@ The month-six sentence is "Who changed Prod?". Somebody fixed a notebook directl
 3. **Stage differences live in configuration.** A variable library with value sets named `dev`, `test` and `prod` is the first choice; a parameter file covers what the variable library can't. Item names are identical in every stage, so a connection that accepts a lakehouse name needs no parameter. References that cross workspace boundaries (a Silver notebook reading Bronze, a shortcut in Sales pointing to Finance Gold) do need one: an item reference variable in the variable library, or a `find_replace` rule in the parameter file.
 4. **A post-deploy step runs after every release:** schema notebook for the lakehouses, then the top-level load, then the refresh of import-mode semantic models.
 
+The branch model. A change that touches Silver and Gold is one short-lived feature branch, worked on in branched-out feature workspaces, and reaches `main` by one pull request.
+
+```mermaid
+gitGraph
+    commit id: "main today"
+    branch feature/417-invoice-vat
+    checkout feature/417-invoice-vat
+    commit id: "Silver change"
+    commit id: "Gold change"
+    checkout main
+    merge feature/417-invoice-vat id: "pull request merged" type: HIGHLIGHT
+    commit id: "next pull request"
+```
+
+The release that follows. Nobody edits Test or Prod: the release pipeline deploys the Git folders with fabric-cicd, runs the post-deploy step, and waits for an approval before Prod.
+
+```mermaid
+sequenceDiagram
+    actor Dev as Developer
+    participant FW as Feature workspace
+    participant Git as Git main
+    participant Rel as Release pipeline<br/>fabric-cicd, service principal
+    participant Test as Test workspaces
+    actor App as Approver
+    participant Prod as Prod workspaces
+    Dev->>FW: branch out from main
+    Dev->>FW: build and test the change
+    FW->>Git: pull request, merged
+    Note over Git: The Dev workspace only follows main
+    Rel->>Git: take the Git folders from main
+    Rel->>Test: deploy with environment test
+    Rel->>Test: post-deploy: schema notebook, load, refresh
+    Rel->>App: request approval
+    App-->>Rel: approved
+    Rel->>Prod: deploy with environment prod
+    Rel->>Prod: post-deploy: schema notebook, load, refresh
+    Note over Rel,Prod: Travels: item definitions, schedules included.<br/>Differs per stage: value set or parameter file values.<br/>Never travels: data, role memberships.
+```
+
 ## Options considered
 
 Microsoft compares three release options ([Fabric CI/CD best practices](https://learn.microsoft.com/fabric/fundamentals/understand-best-practices-fabric-cicd?wt.mc_id=AZ-MVP-5003447)):

@@ -24,6 +24,27 @@ Three capacities, split by workload and stage, all in the same region:
 
 Consumers read Gold through shortcuts that live in their own workspace, so their reads run on the reports capacity. Capacity overage is decided per capacity, not left at its default. Capacity-level surge protection is on for the reports capacity.
 
+Which workspaces run where. The dotted edges are shortcut reads: they are billed to the capacity of the workspace that holds the shortcut, so reports load the reports capacity, while a direct query on Gold still lands on the jobs capacity.
+
+```mermaid
+flowchart LR
+    subgraph JOBS["fcprodjobseu01: scheduled loads, background"]
+        direction TB
+        PB["Finance-Prod-Bronze"] --> PS["Finance-Prod-Silver"] --> PG["Finance-Prod-Gold"]
+    end
+    subgraph REP["fcprodreportseu01: reports, interactive"]
+        direction TB
+        SR["Sales-Prod-Reports"]
+        FR["Finance-Prod-Reports"]
+    end
+    subgraph NP["fcnonprodeu01: Dev and Test, paused outside working hours"]
+        DT["Every Dev and Test workspace"]
+    end
+    PG -. "shortcut read,<br/>billed to reports capacity" .-> SR
+    PG -. "shortcut read,<br/>billed to reports capacity" .-> FR
+    AN["Analyst querying Gold directly"] -- "runs on jobs capacity" --> PG
+```
+
 ## Options considered
 
 1. **One capacity for everything.** *Rejected because* scheduled jobs and interactive reports compete for the same capacity units. Microsoft: "Heavy background processing (for example, Spark ETL jobs or AI training) should use different capacities than interactive report queries, since overlapping can cause performance issues" ([Capacity planning part 3](https://learn.microsoft.com/fabric/enterprise/capacity-planning-enterprise-managed-self-service-solutions?wt.mc_id=AZ-MVP-5003447)). For a small team with light loads, one capacity plus surge protection is a fair start.
@@ -38,6 +59,25 @@ Consumers read Gold through shortcuts that live in their own workspace, so their
 - **Shortcut reads follow the consumer.** "When one capacity produces features such as OneLake items and another capacity consumes them, the throttling state of the consuming capacity determines whether it throttles calls to the item" ([Throttling](https://learn.microsoft.com/fabric/enterprise/throttling?wt.mc_id=AZ-MVP-5003447)). And "the transaction usage counts against the capacity tied to the workspace where the shortcut is created" ([OneLake consumption](https://learn.microsoft.com/fabric/onelake/onelake-consumption?wt.mc_id=AZ-MVP-5003447)). A throttled jobs capacity therefore doesn't throttle reports that read Gold through a shortcut in a reports workspace.
 - **Dev and Test off the production capacities.** Microsoft: "Central IT should have Dev and QA workspaces on a nonproduction capacity categorized as noncritical" ([Capacity planning part 3](https://learn.microsoft.com/fabric/enterprise/capacity-planning-enterprise-managed-self-service-solutions?wt.mc_id=AZ-MVP-5003447)); the deployment-pattern page describes a "shared capacity for dev/test with a separate production capacity" and pausing dev and test outside working hours ([Deployment patterns](https://learn.microsoft.com/azure/architecture/data-guide/technology-choices/fabric-deployment-patterns?wt.mc_id=AZ-MVP-5003447)).
 - **Two smaller beat one larger when the demands differ.** Microsoft's example: "run tier 1 on an F64 and tier 2 on another F64 rather than both on a single F128" ([Capacity planning part 3](https://learn.microsoft.com/fabric/enterprise/capacity-planning-enterprise-managed-self-service-solutions?wt.mc_id=AZ-MVP-5003447)).
+
+Monday at nine with the split in place. The night's loads are still being paid off on the jobs capacity, but the report reads Gold through a shortcut on the reports capacity, and throttling is decided per capacity.
+
+```mermaid
+sequenceDiagram
+    participant L as Nightly loads
+    participant J as Jobs capacity
+    participant O as finance_gold in OneLake
+    participant R as Reports capacity
+    actor U as Report reader
+    L->>J: Bronze, Silver and Gold loads run overnight
+    J->>O: write Gold
+    Note over J: Background jobs are smoothed over 24 hours,<br/>so the night is still being paid off at nine
+    U->>R: 09:00 opens a report
+    R->>O: reads Gold through a shortcut in the reports workspace
+    Note over R: The consuming capacity pays for the read,<br/>and its throttling state decides
+    R-->>U: report renders
+    Note over J,R: Throttling is per capacity: while one is overloaded,<br/>the others might keep running normally
+```
 
 ## Consequences and trade-offs
 

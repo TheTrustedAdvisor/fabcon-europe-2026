@@ -33,6 +33,37 @@ Each rule is marked **(Microsoft)** with a link when it is Microsoft's rule or g
 | Branches | `main` for integration, `feature/{ticket}-{topic}` | `feature/417-invoice-vat` |
 | Release environments, value sets | `dev`, `test`, `prod` | `prod` |
 
+How the named objects relate. Each workspace runs on one capacity, sits in one domain and is connected to or deployed from one Git folder; groups hold roles across workspaces; items keep the same name in every stage.
+
+```mermaid
+erDiagram
+    CAPACITY ||--o{ WORKSPACE : "runs"
+    DOMAIN ||--o{ WORKSPACE : "groups"
+    GIT_FOLDER ||--|{ WORKSPACE : "connected to Dev, deployed to Test and Prod"
+    WORKSPACE ||--o{ ITEM : "contains"
+    WORKSPACE ||--o{ FOLDER : "contains"
+    FOLDER |o--o{ ITEM : "organises"
+    ENTRA_GROUP }o--o{ WORKSPACE : "holds a role in"
+    CAPACITY {
+        string name "fc{env}{workload}{region}{nn}"
+    }
+    DOMAIN {
+        string name "{Area} {Kind}"
+    }
+    WORKSPACE {
+        string name "{Domain}-{Env}-{Purpose}"
+    }
+    ITEM {
+        string name "same in every stage"
+    }
+    GIT_FOLDER {
+        string name "the layer, no stage"
+    }
+    ENTRA_GROUP {
+        string name "Fabric {role} - {Domain} {Scope} [{Env}]"
+    }
+```
+
 ## Capacities
 
 - **Letters and digits, lowercase, 3 to 63 characters, starting with a letter.** The Azure resource definition for `Microsoft.Fabric/capacities` constrains the name to pattern `^[a-z][a-z0-9]*$`, minimum 3, maximum 63 (Microsoft, [ARM template reference](https://learn.microsoft.com/azure/templates/microsoft.fabric/capacities?wt.mc_id=AZ-MVP-5003447)). No hyphens, no uppercase. Some Microsoft pages show capacity names with hyphens as illustrations; the resource definition is what the deployment checks.
@@ -51,6 +82,24 @@ Each rule is marked **(Microsoft)** with a link when it is Microsoft's rule or g
 ## Workspaces
 
 **Pattern:** `{Domain}-{Env}-{Purpose}`, where Purpose is the layer (Bronze, Silver, Gold) in core data domains and `Reports` in consumer domains ([ADR-0001](adr/0001-workspace-cut.md)).
+
+The name has three parts, and only the last one depends on the kind of domain.
+
+```mermaid
+flowchart TD
+    P["{Domain}-{Env}-{Purpose}"]
+    D["Domain<br/>business area: Finance, Sales"]
+    E["Env<br/>Dev, Test, Prod, always written out"]
+    U["Purpose"]
+    L["Core data domain:<br/>Bronze, Silver, Gold"]
+    R["Consumer domain:<br/>Reports"]
+    X1["Finance-Prod-Gold"]
+    X2["Sales-Prod-Reports"]
+    P --> D & E & U
+    U --> L & R
+    L --> X1
+    R --> X2
+```
 
 | Workspace | Kind |
 |---|---|
@@ -113,6 +162,25 @@ Either choice works if it is the only one. Don't mix them, and write the choice 
 - **Security groups only.** Microsoft: security groups "offer the highest coverage", and groups with dynamic membership "aren't supported for Power BI" (Microsoft, [Tenant-level security planning](https://learn.microsoft.com/power-bi/guidance/powerbi-implementation-planning-security-tenant-level-planning?wt.mc_id=AZ-MVP-5003447)). At the SQL analytics endpoint, OneLake security doesn't support mail-enabled security groups or distribution lists (Microsoft, [OneLake security for SQL analytics endpoints](https://learn.microsoft.com/fabric/onelake/security/sql-analytics-endpoint-onelake-security?wt.mc_id=AZ-MVP-5003447)). Use plain security groups everywhere.
 - **OneLake security role names:** letters and digits only, starting with a letter, at most 128 characters (Microsoft, [Create and manage OneLake security roles](https://learn.microsoft.com/fabric/onelake/security/create-manage-roles?wt.mc_id=AZ-MVP-5003447)). But the SQL analytics endpoint adds the prefix `OLS_` and "OneLake security role names cannot exceed 124 characters; otherwise, role creation or synchronization fails on the SQL analytics endpoint" (Microsoft, [OneLake security for SQL analytics endpoints](https://learn.microsoft.com/fabric/onelake/security/sql-analytics-endpoint-onelake-security?wt.mc_id=AZ-MVP-5003447)). Stay under 124. Name roles after what they grant: `ReadAllGold`, `ReadInvoicesEU` (my recommendation).
 - **Service principals:** one release service principal per domain, named after its job, for example `sp-fabric-release-finance`; Contributor on the target workspaces, Member where it also manages OneLake security roles or switches the SQL endpoint mode, and Read on Gold where it creates shortcuts in consumer workspaces. If you split security from deployment, a second one: `sp-fabric-security-finance` (my recommendation; role requirements in [ADR-0004](adr/0004-release-path-fabric-cicd.md) and [ADR-0005](adr/0005-permissions-onelake-security.md)).
+
+Principle 3 in one picture: the stage lives in the workspace name, the Git folder and the release environment, while the lakehouse is `finance_gold` in all three stages.
+
+```mermaid
+flowchart LR
+    GIT["Git folder fabric/gold"]
+    subgraph WD["Finance-Dev-Gold"]
+        LD["finance_gold"]
+    end
+    subgraph WT["Finance-Test-Gold"]
+        LT["finance_gold"]
+    end
+    subgraph WP["Finance-Prod-Gold"]
+        LP["finance_gold"]
+    end
+    GIT -- "connected" --> WD
+    GIT -- "deployed, env test" --> WT
+    GIT -- "deployed, env prod" --> WP
+```
 
 ## Deployment pipelines, Git and fabric-cicd
 

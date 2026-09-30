@@ -16,6 +16,21 @@ Each layer workspace from ADR-0001 holds one storage item: Bronze, Silver and Go
 
 All three layers are lakehouses: `finance_bronze` in Finance-{Env}-Bronze, `finance_silver` in Finance-{Env}-Silver, `finance_gold` in Finance-{Env}-Gold. Silver and Gold tables are Delta tables with change data feed switched on. A warehouse is added next to Gold only where Gold needs T-SQL writes, stored procedures or multi-table transactions, and it gets its own ADR.
 
+Three lakehouses in a row, one per layer workspace. Change data feed on Silver lets Gold read only the rows that changed; consumers reach Gold through a shortcut; the dashed warehouse exists only if Gold ever needs T-SQL writes, and then under its own ADR.
+
+```mermaid
+flowchart LR
+    B["finance_bronze<br/>lakehouse, original format"]
+    S["finance_silver<br/>lakehouse, change data feed on"]
+    G["finance_gold<br/>lakehouse, change data feed on"]
+    C["sales_reporting<br/>consumer lakehouse"]
+    W["Gold warehouse<br/>only for T-SQL writes,<br/>own ADR"]
+    B -- "load" --> S
+    S -- "changed rows only<br/>(change data feed)" --> G
+    G -- "shortcut, no copy" --> C
+    G -.-> W
+```
+
 ## Options considered
 
 1. **Lakehouse, Lakehouse, Lakehouse (chosen).**

@@ -44,4 +44,19 @@ Rules for this log, following [Maintain an architecture decision record (ADR)](h
 - Keep it short and factual. A record is not a design guide; link to longer material instead, but the decision must stand without it.
 - Keep the records in Git, next to the code they shape.
 
+The status values above form a short lifecycle. A record moves forward only; a changed decision gets a new record, and the old one becomes superseded.
+
+```mermaid
+stateDiagram-v2
+    state "Superseded by ADR-NNNN" as Superseded
+    [*] --> Proposed
+    Proposed --> Accepted
+    Accepted --> Superseded: a new record replaces the decision
+    Superseded --> [*]
+    note right of Accepted
+        Append-only: the record is not edited.
+        Only status and status history change.
+    end note
+```
+
 The fields *Owner*, *Revisit when* and *Related* are my additions; Microsoft's guidance does not require them.
