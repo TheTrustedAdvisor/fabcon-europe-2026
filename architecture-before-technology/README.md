@@ -16,9 +16,9 @@ Most Fabric platforms that struggle did not pick the wrong engine. They skipped 
 | 2 | "Which revenue number is right?" | Core data domains produce Gold; consumer domains read it by shortcut, never a copy |
 | 3 | "Why is it slow on Monday?" | Separate capacity by workload: scheduled jobs, reports, Dev and Test |
 | 4 | "Who changed Prod?" | Build in Dev with Git; release to Test and Prod with fabric-cicd and a parameter file per stage |
-| 5 | "Who can see this report?" | One owner per domain; groups, not people, get workspace roles |
+| 5 | "Who can see this report?" | Owner per domain, roles in OneLake: groups, not people, get workspace roles; readers get a OneLake role on Gold with table, row and column rules, defined once at the data |
 
-Then the technology: Lakehouse, Lakehouse, Lakehouse (change data feed, shortcuts, one OneLake security model), and a Warehouse where Gold needs T-SQL writes or multi-table transactions.
+Then the technology: Lakehouse, Lakehouse, Lakehouse (change data feed, shortcuts, and the one permission model from answer 5), and a Warehouse where Gold needs T-SQL writes or multi-table transactions.
 
 And one more: write an architecture decision record (ADR) per decision. Template and two examples in [adr/](adr/).
 

@@ -10,7 +10,7 @@ Matthias Falland · FabCon Europe 2026 · Community Hub · linkedin.com/in/matth
 | 2 | How do others read it? | One path Bronze, Silver, Gold in the core data domain; consumers get a shortcut to Gold, never a copy | A shortcut points to the data instead of copying it; changes are visible at once, and the reader's capacity pays for its reads | "Which revenue number is right?" |
 | 3 | What competes for compute? | Separate capacity by workload: scheduled jobs, reports, Dev and Test | Throttling is per capacity: when one is overloaded, the others aren't slowed by its load. On an overloaded capacity, the reports people open are delayed, then rejected first | "Why is it slow on Monday?" |
 | 4 | How does it reach Prod? | Git, then fabric-cicd to Test and Prod; nobody edits Prod | Git integration works per workspace. Data never travels, connections do: fabric-cicd swaps IDs per stage with a parameter file, schedules live in the item definition, post-deploy actions run the refresh. Microsoft recommends fabric-cicd as a best practice | "Who changed Prod?" |
-| 5 | Who says yes to access? | One owner per domain, from the business; groups, not people, get workspace roles | Access comes from workspace roles and item permissions, not from the domain | "Who can see this report?" |
+| 5 | Who says yes to access? | Owner per domain, roles in OneLake: the owner approves groups; readers get Viewer plus a OneLake role on Gold (tables, rows, columns) | Access comes from workspace roles, not the domain; OneLake rules are authored once and enforced across Fabric engines | "Who can see this report?" |
 
 **Also:** name workspaces `{Domain}-{Env}-{Purpose}` (Finance-Prod-Data, Sales-Dev-Reports, Finance-Prod-Reports), agreed before the first workspace. Write an ADR per architecture decision (decision, why, alternatives, date, owner, status), superseded, never edited, versioned in Git.
 
@@ -20,7 +20,7 @@ Matthias Falland · FabCon Europe 2026 · Community Hub · linkedin.com/in/matth
 
 - **Change data feed:** switch it on for the Delta tables in a lakehouse, and the next layer can read only the rows that changed. Materialized lake views use the same change feed for incremental refresh. Set `delta.enableChangeDataFeed = true` when you create the table; it doesn't backfill.
 - **Shortcuts:** they land in a lakehouse, so every layer shares without copies.
-- **OneLake security:** table, row and column permissions defined once and enforced across Fabric engines. Warehouse T-SQL security applies to SQL queries only.
+- **One permission model:** the OneLake roles from answer 5 cover every layer. A Gold Warehouse adds a second model: its T-SQL security applies to SQL queries only.
 - **Take a Warehouse** where Gold needs T-SQL writes, stored procedures or multi-table transactions. Same Delta in OneLake, same SQL engine: add it later without moving data.
 
 **On Monday:** ask the five questions about your own platform; the first one without a clear answer is where to start.
